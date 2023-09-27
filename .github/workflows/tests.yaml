@@ -1,0 +1,145 @@
+---
+name: tests
+
+on:
+  push:
+      branches:
+        - feature/*
+      paths:
+        modules/*/**
+  pull_request:
+      branches:
+        - main
+      paths:
+        modules/*/**
+
+env:
+  GO_VERSION: 1.20.0
+  DEBUG_ENABLED: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  get-changed-modules:
+    runs-on: ubuntu-latest
+    name: Get changed modules
+    outputs: 
+      matrix: ${{ steps.get-changed.outputs.matrix }}
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get changed modules
+        id: get-changed
+        run: |
+            # See https://github.community/t/check-pushed-file-changes-with-git-diff-tree-in-github-actions/17220/10 
+            if [ $GITHUB_BASE_REF ]; then
+              # Pull Request
+              git fetch origin $GITHUB_BASE_REF --depth=1
+              # Only select the mofidied directories that isn't "common" but an actual modules
+              export CHANGED_MODULES=$( git diff --name-only origin/$GITHUB_BASE_REF ${{ github.event.after }} -- modules | grep -E 'modules/.*/' | cut -d/ -f2 | uniq)
+              echo "Diff between origin/$GITHUB_BASE_REF and ${{ github.event.after }}"
+            else
+              # Push
+              git fetch origin ${{ github.event.before }} --depth=1
+              # Only select the mofidied directories that isn't "terraform- but an actual modules
+              export CHANGED_MODULES=$( git diff --name-only ${{ github.event.before }} ${{ github.event.after }} -- modules | grep -E 'modules/.*/' |  cut -d/ -f2 | uniq)
+              echo "Diff between ${{ github.event.before }} and ${{ github.event.after }}"
+            fi
+            # Get all the modules that have the directory "test"
+            MODULES_WITH_TEST=$(find modules/ -type d -name "tests" -printf '%h\\n')
+            # Create our json structure [{"module": "source|destination-...", "has_tests": false|true}]
+            MODULES_JSON=$(echo $CHANGED_MODULES | jq -R -s -c --argjson modulesWithTests "$(echo $MODULES_WITH_TEST | jq -R -s 'split("\\n")[:-1]')" 'split("\n")[:-1] | map({module_name: ., has_test: (. as $mod | $modulesWithTests | any(. == "modules/\($mod)") ) })')
+            # Export the modules as json to the outputs
+            echo "$MODULES_JSON"
+            echo "matrix=$(echo "$MODULES_JSON")" >> $GITHUB_OUTPUT
+
+  # All type of unit tests can be added to this job. Currently we only have
+  # unit tests for terraform.
+  unit:
+    if: github.event_name == 'push'
+    name: Run dry-runs / unit test(s) for ${{ matrix.module.module_name }}
+    needs: get-changed-modules
+    runs-on: ubuntu-latest
+    # need to run in an environment so that fedaration credentials subject matches all push events
+    # https://learn.microsoft.com/en-us/azure/active-directory/workload-identities/workload-identity-federation-create-trust?pivots=identity-wif-apps-methods-azp#entity-type-examples
+    environment: feature
+    strategy:
+      fail-fast: false
+      matrix: 
+          module: ${{fromJson(needs.get-changed-modules.outputs.matrix)}}
+    env:
+        MODULE_PATH: 'modules/${{ matrix.module.module_name }}'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:  
+          fetch-depth: 0
+
+      - name: 'Az CLI login'
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+   
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Debug (toggle)
+        if: ${{ env.DEBUG_ENABLED }}
+        run: echo "${{ matrix.module.module_name }} - ${{ matrix.module.has_test }}"
+
+      - name: Run dry-runs/units
+        if: ${{ matrix.module.has_test }}
+        run: pushd ${{ env.MODULE_PATH }}/tests/ && bash test.sh -m unit    
+    
+  integration:
+    if: github.event_name == 'pull_request'
+    name: Run integration test(s) for ${{ matrix.module.module_name }}
+    needs: get-changed-modules
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: 
+          module: ${{fromJson(needs.get-changed-modules.outputs.matrix)}}
+    env:
+        MODULE_PATH: 'modules/${{ matrix.module.module_name }}'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:  
+          fetch-depth: 0
+
+      - name: 'Az CLI login'
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+   
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Debug (toggle)
+        if: ${{ env.DEBUG_ENABLED }}
+        run: echo "${{ matrix.module.module_name }} - ${{ matrix.module.has_test }}"
+
+      - name: Run tests
+        if: ${{ matrix.module.has_test }}
+        run: pushd ${{ env.MODULE_PATH }}/tests/ && bash test.sh -m integration
+
