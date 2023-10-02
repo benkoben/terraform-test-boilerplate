@@ -6,6 +6,9 @@ This repository contains templates to use when creating new tests for terraform 
 3. A shell script that wraps the tests into a friendly use format.
 4. Github actions workflows
 
+**Note**
+> This repository contains a workflow file that can execute *_test.go files. However, should use these boilerplates in an pre-existing repository there is a good chance that a workflow is already in place. Should that be the case then feel free to remove the .github folder from the project directory.
+
 # Getting started
 
 To create a new project based on the one of the templates:
