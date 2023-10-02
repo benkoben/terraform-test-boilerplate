@@ -44,7 +44,7 @@ func TestDry_Example(t *testing.T) {
 		}
 	}{
 		{
-			name:  "simple-isolated-network-eun",
+			name:  "example-dry-run",
 			input: mockModuleInput(t),
 			// The order of the elements is important
 			// Tip: Run a test to see the order of the resources

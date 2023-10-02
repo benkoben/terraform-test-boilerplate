@@ -12,8 +12,8 @@ target_module_dir=$(realpath "${script_dir}/..")
 go_executable=$(which go)
 
 # Edit the following variables to change the behaviour of the tests
-unit_tests_prefix='TestDry_'
-unit_tests_timeout='15m'
+dry_tests_prefix='TestDry_'
+dry_tests_timeout='15m'
 
 unit_tests_prefix='TestUT_'
 unit_tests_timeout='15m'
@@ -37,6 +37,7 @@ usage() {
 }
 
 full() {
+  dry
   unit
   integration
 }
@@ -47,7 +48,7 @@ dry() {
   # the test succeeds.
   format
   printf "\nRunning%btests....\n" "${blue} dry-run ${nc}"
-  "${go_executable}" test -count=1 "${script_dir}" -run "${unit_tests_prefix}" -v -timeout "${unit_tests_timeout}"
+  "${go_executable}" test -count=1 "${script_dir}" -run "${dry_tests_prefix}" -v -timeout "${dry_tests_timeout}"
 }
 
 
@@ -138,6 +139,9 @@ while getopts ":m:" o; do
       ;;
     'integration')
       integration
+      ;;
+    'dry')
+      dry
       ;;
     *)
       usage
