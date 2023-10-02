@@ -141,5 +141,5 @@ jobs:
 
       - name: Run tests
         if: ${{ matrix.module.has_test }}
-        run: pushd ${{ env.MODULE_PATH }}/tests/ && bash test.sh -m integration
+        run: pushd ${{ env.MODULE_PATH }}/tests/ && bash test.sh -m full
 

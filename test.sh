@@ -32,7 +32,7 @@ handle_error(){
 }
 
 usage() {
-  echo 'Usage: ./test.sh -m MODE <full|unit|integration>'
+  echo 'Usage: ./test.sh -m MODE <full|unit|integration|dry>'
   exit 1
 }
 
