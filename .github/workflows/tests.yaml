@@ -59,7 +59,7 @@ jobs:
             # Get all the modules that have the directory "test"
             MODULES_WITH_TEST=$(find modules/ -type d -name "tests" -printf '%h\\n')
             # Create our json structure [{"module": "source|destination-...", "has_tests": false|true}]
-            MODULES_JSON=$(echo $CHANGED_MODULES | jq -R -s -c --argjson modulesWithTests "$(echo $MODULES_WITH_TEST | jq -R -s 'split("\\n")[:-1]')" 'split("\n")[:-1] | map({module_name: ., has_test: (. as $mod | $modulesWithTests | any(. == "modules/\($mod)") ) })')
+            MODULES_JSON=$(echo $CHANGED_MODULES | tr -d "\n" | jq -R -s -c --argjson modulesWithTests "$(echo $MODULES_WITH_TEST | jq -R -s 'split("\\n")[:-1]')" 'split(" ") | map({module_name: ., has_test: (. as $mod | $modulesWithTests | any(. == "modules/\($mod)") ) })')
             # Export the modules as json to the outputs
             echo "$MODULES_JSON"
             echo "matrix=$(echo "$MODULES_JSON")" >> $GITHUB_OUTPUT
