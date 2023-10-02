@@ -104,7 +104,7 @@ jobs:
 
       - name: Run dry-runs/units
         if: ${{ matrix.module.has_test }}
-        run: pushd ${{ env.MODULE_PATH }}/tests/ && bash test.sh -m unit    
+        run: pushd ${{ env.MODULE_PATH }}/tests/ && bash test.sh -m dry    
     
   integration:
     if: github.event_name == 'pull_request'
