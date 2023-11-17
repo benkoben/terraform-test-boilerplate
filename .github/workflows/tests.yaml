@@ -66,7 +66,7 @@ jobs:
 
   # All type of unit tests can be added to this job. Currently we only have
   # unit tests for terraform.
-  unit:
+  dry:
     if: github.event_name == 'push'
     name: Run dry-runs / unit test(s) for ${{ matrix.module.module_name }}
     needs: get-changed-modules
@@ -106,7 +106,7 @@ jobs:
         if: ${{ matrix.module.has_test }}
         run: pushd ${{ env.MODULE_PATH }}/tests/ && bash test.sh -m dry    
     
-  integration:
+  full:
     if: github.event_name == 'pull_request'
     name: Run integration test(s) for ${{ matrix.module.module_name }}
     needs: get-changed-modules
