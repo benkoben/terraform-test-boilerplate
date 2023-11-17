@@ -102,7 +102,7 @@ cleanup() {
     fi
 
     # remove files created by the tests
-    if [[ -f ${file} ]] && [[ ${basename_obj} == "features.tf" ]]; then
+    if [[ -f ${file} ]] && [[ ${basename_obj} == "features.tf" || ${basename_obj} == "provider.tf" ]]; then
       rm -rf "${file}"
       printf "removed %s\n" "${file}"
     fi
